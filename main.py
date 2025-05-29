@@ -7,6 +7,7 @@
 # ///
 
 import pygame
+import sys # Added for sys.exit
 
 from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT
 from utils import draw_grid, draw_centered_surface
@@ -18,23 +19,39 @@ def main():
     pygame.init()
     pygame.display.set_caption("Tetris with PyGame")
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    
+    # Game states
     run = True
+    menu_active = True
     paused = False
     game_over = False
+    player_type = None # "human", "ai1", "ai2", etc.
+    
     # Create background.
     background = pygame.Surface(screen.get_size())
     bgcolor = (0, 0, 0)
     background.fill(bgcolor)
     # Draw the grid on top of the background.
-    draw_grid(background)
+    draw_grid(background, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT)
     # This makes blitting faster.
     background = background.convert()
 
     try:
         font = pygame.font.Font("Roboto-Regular.ttf", 20)
+        menu_font = pygame.font.Font("Roboto-Regular.ttf", 30) # Larger font for menu
     except OSError:
         # If the font file is not available, the default will be used.
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
+        menu_font = pygame.font.Font(pygame.font.get_default_font(), 30)
+
+    # --- Menu Setup ---
+    menu_options = ["Human Player", "AI Player 1 (Placeholder)", "AI Player 2 (Placeholder)"]
+    selected_option_index = 0
+    menu_title_text = menu_font.render("Select Player Mode", True, (255, 255, 255), bgcolor)
+    option_texts = [menu_font.render(option, True, (255, 255, 255), bgcolor) for option in menu_options]
+    selected_option_color = (255, 220, 0) # Yellow for selected
+
+    # --- In-Game Text ---
     next_block_text = font.render("Next figure:", True, (255, 255, 255), bgcolor)
     score_msg_text = font.render("Score:", True, (255, 255, 255), bgcolor)
     game_over_text = font.render("¡Game over!", True, (255, 220, 0), bgcolor)
@@ -46,35 +63,99 @@ def main():
     pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, 1000)
     pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, 100)
 
-    blocks = BlocksGroup()
+    blocks = BlocksGroup() # Initialize blocks here, might be reset after menu
 
     while run:
+        if menu_active:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        selected_option_index = (selected_option_index - 1) % len(menu_options)
+                    elif event.key == pygame.K_DOWN:
+                        selected_option_index = (selected_option_index + 1) % len(menu_options)
+                    elif event.key == pygame.K_RETURN:
+                        if selected_option_index == 0:
+                            player_type = "human"
+                        elif selected_option_index == 1:
+                            player_type = "ai1" # Placeholder
+                        elif selected_option_index == 2:
+                            player_type = "ai2" # Placeholder
+                        menu_active = False
+                        # Reset game state for a new game
+                        game_over = False
+                        paused = False
+                        blocks = BlocksGroup() # Re-initialize blocks for the selected mode
+                        # Ensure timers are set correctly if they were stopped or changed
+                        pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, 1000)
+                        pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, 100)
+
+
+            # Draw Menu
+            screen.blit(background, (0, 0)) # Clear screen with background (grid might be visible)
+            
+            title_rect = menu_title_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4))
+            screen.blit(menu_title_text, title_rect)
+
+            for i, option_text_surface in enumerate(option_texts):
+                color = selected_option_color if i == selected_option_index else (255, 255, 255)
+                # Re-render text with current color to show selection
+                rendered_text = menu_font.render(menu_options[i], True, color, bgcolor)
+                text_rect = rendered_text.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + i * 50))
+                screen.blit(rendered_text, text_rect)
+            
+            pygame.display.flip()
+            continue # Skip game logic while menu is active
+
+        # --- Main Game Loop (when menu_active is False) ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 break
             elif event.type == pygame.KEYUP:
-                if not paused and not game_over:
-                    if event.key in MOVEMENT_KEYS:
-                        blocks.stop_moving_current_block()
-                    elif event.key == pygame.K_UP:
-                        blocks.rotate_current_block()
+                if player_type == "human": # Only process human input if human player
+                    if not paused and not game_over:
+                        if event.key in MOVEMENT_KEYS:
+                            blocks.stop_moving_current_block()
+                        elif event.key == pygame.K_UP:
+                            blocks.rotate_current_block()
                 if event.key == pygame.K_p:
                     paused = not paused
+                if game_over and event.key == pygame.K_RETURN: # Restart game or go to menu
+                    menu_active = True # Go back to menu
+                    # Reset game state variables
+                    game_over = False
+                    paused = False
+                    # blocks will be re-initialized when menu selection is made
 
             # Stop moving blocks if the game is over or paused.
             if game_over or paused:
                 continue
 
-            if event.type == pygame.KEYDOWN:
-                if event.key in MOVEMENT_KEYS:
-                    blocks.start_moving_current_block(event.key)
+            if player_type == "human": # Only process human input if human player
+                if event.type == pygame.KEYDOWN:
+                    if event.key in MOVEMENT_KEYS:
+                        blocks.start_moving_current_block(event.key)
+            
+            # AI control would go here, modifying blocks based on player_type
+            # For now, AI does nothing, game proceeds as if no input for AI
 
             try:
                 if event.type == EVENT_UPDATE_CURRENT_BLOCK:
                     blocks.update_current_block()
                 elif event.type == EVENT_MOVE_CURRENT_BLOCK:
-                    blocks.move_current_block()
+                    # For human, this is fine. For AI, AI would decide when/how to move.
+                    if player_type == "human":
+                        blocks.move_current_block()
+                    elif player_type in ["ai1", "ai2"]:
+                        # AI logic for moving block would be called here
+                        # For now, let's make AI also respond to this timer for basic movement
+                        # This part will need significant changes for actual AI
+                        pass # AI will need its own movement logic, not tied to key presses
+
             except TopReached:
                 game_over = True
 
@@ -90,10 +171,14 @@ def main():
         draw_centered_surface(screen, score_text, 270)
         if game_over:
             draw_centered_surface(screen, game_over_text, 360)
+            restart_text = font.render("Press ENTER to return to Menu", True, (255, 255, 255), bgcolor)
+            draw_centered_surface(screen, restart_text, 400)
+
         # Update.
         pygame.display.flip()
 
     pygame.quit()
+    sys.exit()
 
 
 if __name__ == "__main__":
