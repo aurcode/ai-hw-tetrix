@@ -9,10 +9,11 @@
 import pygame
 import sys # Added for sys.exit
 
-from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT
+from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
 from utils import draw_grid, draw_centered_surface
 from block import TopReached
 from blocks_group import BlocksGroup
+from ai_player import SimpleAI # Import the AI class
 
 
 def main():
@@ -26,6 +27,7 @@ def main():
     paused = False
     game_over = False
     player_type = None # "human", "ai1", "ai2", etc.
+    ai_instance = None # To hold the AI object
     
     # Create background.
     background = pygame.Surface(screen.get_size())
@@ -81,9 +83,13 @@ def main():
                         if selected_option_index == 0:
                             player_type = "human"
                         elif selected_option_index == 1:
-                            player_type = "ai1" # Placeholder
+                            player_type = "ai1"
+                            ai_instance = SimpleAI(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
                         elif selected_option_index == 2:
-                            player_type = "ai2" # Placeholder
+                            player_type = "ai2" # Placeholder for a different AI
+                            # ai_instance = AnotherAI(...) 
+                            print("AI Player 2 selected - using SimpleAI as placeholder for now.")
+                            ai_instance = SimpleAI(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
                         menu_active = False
                         # Reset game state for a new game
                         game_over = False
@@ -130,34 +136,65 @@ def main():
                     game_over = False
                     paused = False
                     # blocks will be re-initialized when menu selection is made
+                    # ai_instance will be (re-)initialized if an AI mode is selected
 
             # Stop moving blocks if the game is over or paused.
             if game_over or paused:
+                # If AI is playing and game over, it might want to know
+                if game_over and ai_instance and hasattr(ai_instance, 'game_ended'):
+                    ai_instance.game_ended() # Optional: notify AI game ended
                 continue
 
+            # --- AI Control Logic ---
+            if player_type in ["ai1", "ai2"] and ai_instance and not paused and not game_over:
+                # 1. Get game state from blocks
+                game_board_state = blocks.get_board_state_array() # Needs to be implemented in BlocksGroup
+                current_block_obj = blocks.current_block
+                next_block_obj = blocks.next_block
+
+                # 2. Get AI's next move
+                # We might want to call this less frequently than every frame, e.g., when a new block appears
+                # or on a separate AI timer. For now, let's assume it's okay to call frequently.
+                ai_actions = ai_instance.get_next_move(game_board_state, current_block_obj, next_block_obj)
+
+                # 3. Execute AI actions
+                for action in ai_actions: # Process one action per frame, or all?
+                    if action == pygame.K_LEFT:
+                        blocks.start_moving_current_block(pygame.K_LEFT)
+                        blocks.move_current_block() # Process immediately for AI
+                        blocks.stop_moving_current_block()
+                    elif action == pygame.K_RIGHT:
+                        blocks.start_moving_current_block(pygame.K_RIGHT)
+                        blocks.move_current_block() # Process immediately for AI
+                        blocks.stop_moving_current_block()
+                    elif action == pygame.K_UP: # Rotate
+                        blocks.rotate_current_block()
+                    elif action == pygame.K_DOWN: # Soft drop one step
+                        # AI might want a hard drop, or more nuanced control
+                        blocks.update_current_block(force_move=True) # Simulate one step down
+                    # Add more actions like hard drop if needed
+
+            # --- Human Input Processing ---
             if player_type == "human": # Only process human input if human player
                 if event.type == pygame.KEYDOWN:
                     if event.key in MOVEMENT_KEYS:
                         blocks.start_moving_current_block(event.key)
             
-            # AI control would go here, modifying blocks based on player_type
-            # For now, AI does nothing, game proceeds as if no input for AI
-
+            # --- Game Logic (Movement, Updates) ---
             try:
-                if event.type == EVENT_UPDATE_CURRENT_BLOCK:
+                if event.type == EVENT_UPDATE_CURRENT_BLOCK: # Natural fall
                     blocks.update_current_block()
-                elif event.type == EVENT_MOVE_CURRENT_BLOCK:
-                    # For human, this is fine. For AI, AI would decide when/how to move.
+                elif event.type == EVENT_MOVE_CURRENT_BLOCK: # Continuous movement for human
                     if player_type == "human":
                         blocks.move_current_block()
-                    elif player_type in ["ai1", "ai2"]:
-                        # AI logic for moving block would be called here
-                        # For now, let's make AI also respond to this timer for basic movement
-                        # This part will need significant changes for actual AI
-                        pass # AI will need its own movement logic, not tied to key presses
+                    # AI movement is handled above based on ai_actions, not this timer directly
+                    # Or, AI could also use this timer if its actions are about starting/stopping movement
 
             except TopReached:
                 game_over = True
+                if ai_instance and hasattr(ai_instance, 'update_game_state_on_landing'):
+                    final_board_state = blocks.get_board_state_array()
+                    ai_instance.update_game_state_on_landing(final_board_state) # Notify AI piece landed causing game over
 
         # Draw background and grid.
         screen.blit(background, (0, 0))
@@ -173,6 +210,10 @@ def main():
             draw_centered_surface(screen, game_over_text, 360)
             restart_text = font.render("Press ENTER to return to Menu", True, (255, 255, 255), bgcolor)
             draw_centered_surface(screen, restart_text, 400)
+        elif paused:
+            pause_text = menu_font.render("PAUSED", True, (255,220,0), bgcolor)
+            draw_centered_surface(screen, pause_text, WINDOW_HEIGHT // 2)
+
 
         # Update.
         pygame.display.flip()

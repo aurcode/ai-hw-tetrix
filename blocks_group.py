@@ -4,6 +4,7 @@ import random
 from collections import OrderedDict
 
 from block import Block, SquareBlock, TBlock, LineBlock, LBlock, ZBlock, BottomReached, TopReached
+from constants import TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES # Added TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
 from utils import remove_empty_columns
 
 class BlocksGroup(pygame.sprite.OrderedUpdates):
@@ -148,3 +149,31 @@ class BlocksGroup(pygame.sprite.OrderedUpdates):
         if not isinstance(self.current_block, SquareBlock):
             self.current_block.rotate(self)
             self.update_grid()
+
+    def get_board_state_array(self):
+        """
+        Creates a 2D numpy array representing the current state of the game board.
+        0 for empty, 1 for filled.
+        This is used to pass the state to the AI.
+        """
+        board_array = np.zeros((BOARD_HEIGHT_TILES, BOARD_WIDTH_TILES), dtype=int)
+        
+        for block_sprite in self: # Iterate over all blocks in the group
+            if not block_sprite.current: # Only consider landed blocks
+                for r_idx, row in enumerate(block_sprite.struct):
+                    for c_idx, cell in enumerate(row):
+                        if cell: # If this part of the block's shape is solid
+                            # Convert block's local grid coordinates (block.x, block.y)
+                            # and its internal shape coordinates (c_idx, r_idx)
+                            # to the main board's grid coordinates.
+                            board_x = block_sprite.x + c_idx
+                            board_y = block_sprite.y + r_idx
+                            
+                            # Ensure the coordinates are within the board bounds
+                            if 0 <= board_y < BOARD_HEIGHT_TILES and 0 <= board_x < BOARD_WIDTH_TILES:
+                                board_array[board_y, board_x] = 1 # Mark as filled
+                            # else:
+                                # This case (part of a landed block being out of bounds)
+                                # ideally shouldn't happen if collision detection is correct.
+                                # print(f"Warning: Part of landed block {block_sprite} at ({board_x},{board_y}) is out of bounds.")
+        return board_array
