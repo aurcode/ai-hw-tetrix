@@ -105,8 +105,13 @@ class BlocksGroup(pygame.sprite.OrderedUpdates):
     def current_block(self):
         return self.sprites()[-1]
 
-    def update_current_block(self):
+    def update_current_block(self, force_move=False): # Added force_move parameter
+        # The 'force_move' parameter is primarily for AI to make a deliberate downward step
+        # outside the normal EVENT_UPDATE_CURRENT_BLOCK timer.
         try:
+            # If forced, or if it's a regular update, move down.
+            # The distinction of 'force_move' is mainly for the caller's intent;
+            # the move_down method itself handles collision.
             self.current_block.move_down(self)
         except BottomReached:
             self.stop_moving_current_block()

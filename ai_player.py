@@ -1,17 +1,20 @@
 import pygame
 import numpy as np
+import random # Added for random moves
 
-class SimpleAI:
+class RandomAIPlayer: # Renamed from SimpleAI
     def __init__(self, grid_width, grid_height):
         """
-        Initializes the AI player.
+        Initializes the Random AI player.
         Args:
             grid_width (int): The width of the game grid.
             grid_height (int): The height of the game grid.
         """
         self.grid_width = grid_width
         self.grid_height = grid_height
-        print(f"SimpleAI initialized for a {grid_width}x{grid_height} grid.")
+        self.action_cooldown = 0 # Counter to limit action frequency
+        self.action_interval = 3 # Perform an action roughly every 5 calls
+        print(f"RandomAIPlayer initialized for a {grid_width}x{grid_height} grid.")
 
     def get_next_move(self, game_board_state, current_block, next_block):
         """
@@ -31,51 +34,29 @@ class SimpleAI:
                   pygame.K_LEFT/RIGHT for horizontal movement.
                   pygame.K_DOWN for soft drop (or hard drop if implemented).
         """
-        # Placeholder logic:
-        # For now, the AI does nothing and lets the block fall.
-        # In a real AI, you would analyze the game_board_state, current_block, and next_block
-        # to decide the optimal sequence of moves.
-
-        # Example: print the state for debugging
-        # print("Current board state:\n", game_board_state)
-        # if current_block:
-        #     print("Current block:", current_block.shape_name, "at", current_block.rect.topleft)
-        # if next_block:
-        #     print("Next block:", next_block.shape_name)
-
         actions = []
+        self.action_cooldown -= 1
 
-        # --- AI Logic would go here ---
-        # 1. Evaluate all possible placements for the current_block.
-        #    - This involves trying different rotations and horizontal positions.
-        # 2. For each possible placement, simulate dropping the block.
-        # 3. Score each resulting board state based on heuristics (e.g., height, holes, completed lines).
-        # 4. Choose the placement that results in the best score.
-        # 5. Determine the sequence of moves (rotations, left/right shifts) to achieve that placement.
-        # 6. Return the first move in that sequence, or a series of moves.
+        if self.action_cooldown <= 0 and current_block:
+            self.action_cooldown = self.action_interval # Reset cooldown
 
-        # Simplistic example: move left if possible, just to show it can return an action
-        # if current_block and current_block.rect.x > 0:
-        #     can_move_left = True
-        #     test_rect = current_block.rect.copy()
-        #     test_rect.x -= current_block.tile_size
-        #     for row_idx, row in enumerate(current_block.shape):
-        #         for col_idx, cell in enumerate(row):
-        #             if cell: # if part of the block
-        #                 board_x = test_rect.x // current_block.tile_size + col_idx
-        #                 board_y = test_rect.y // current_block.tile_size + row_idx
-        #                 if board_x < 0 or game_board_state[board_y, board_x] != 0:
-        #                     can_move_left = False
-        #                     break
-        #         if not can_move_left:
-        #             break
-        #     if can_move_left:
-        #         actions.append(pygame.K_LEFT)
-
+            possible_moves = [
+                pygame.K_LEFT, 
+                pygame.K_RIGHT, 
+                pygame.K_UP, # Rotate
+                pygame.K_DOWN, # Soft drop one step
+                None, None, None # Increase probability of doing nothing
+            ]
+            
+            chosen_move = random.choice(possible_moves)
+            
+            if chosen_move is not None:
+                actions.append(chosen_move)
+                # print(f"RandomAI chose: {chosen_move}")
 
         return actions
 
-    def update_game_state(self, game_board_state):
+    def update_game_state(self, game_board_state): # Renamed from update_game_state_on_landing for consistency
         """
         Optional method for the AI to update its internal representation or strategy
         based on the new game state after a block has landed.

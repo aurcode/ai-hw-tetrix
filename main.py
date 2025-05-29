@@ -13,7 +13,7 @@ from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_H
 from utils import draw_grid, draw_centered_surface
 from block import TopReached
 from blocks_group import BlocksGroup
-from ai_player import SimpleAI # Import the AI class
+from ai_player import RandomAIPlayer # Import the renamed AI class
 
 
 def main():
@@ -47,7 +47,7 @@ def main():
         menu_font = pygame.font.Font(pygame.font.get_default_font(), 30)
 
     # --- Menu Setup ---
-    menu_options = ["Human Player", "AI Player 1 (Placeholder)", "AI Player 2 (Placeholder)"]
+    menu_options = ["Human Player", "Random AI Player", "AI Player 2 (Placeholder)"] # Updated menu option
     selected_option_index = 0
     menu_title_text = menu_font.render("Select Player Mode", True, (255, 255, 255), bgcolor)
     option_texts = [menu_font.render(option, True, (255, 255, 255), bgcolor) for option in menu_options]
@@ -83,13 +83,13 @@ def main():
                         if selected_option_index == 0:
                             player_type = "human"
                         elif selected_option_index == 1:
-                            player_type = "ai1"
-                            ai_instance = SimpleAI(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
+                            player_type = "ai1" # Internal name for Random AI
+                            ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
                         elif selected_option_index == 2:
                             player_type = "ai2" # Placeholder for a different AI
                             # ai_instance = AnotherAI(...) 
-                            print("AI Player 2 selected - using SimpleAI as placeholder for now.")
-                            ai_instance = SimpleAI(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
+                            print("AI Player 2 selected - using RandomAIPlayer as placeholder for now.") # Or a different placeholder
+                            ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
                         menu_active = False
                         # Reset game state for a new game
                         game_over = False
@@ -187,14 +187,13 @@ def main():
                 elif event.type == EVENT_MOVE_CURRENT_BLOCK: # Continuous movement for human
                     if player_type == "human":
                         blocks.move_current_block()
-                    # AI movement is handled above based on ai_actions, not this timer directly
-                    # Or, AI could also use this timer if its actions are about starting/stopping movement
+                    # AI movement is handled above based on ai_actions, not this timer directly.
 
             except TopReached:
                 game_over = True
-                if ai_instance and hasattr(ai_instance, 'update_game_state_on_landing'):
+                if ai_instance and hasattr(ai_instance, 'update_game_state'): # Changed to update_game_state
                     final_board_state = blocks.get_board_state_array()
-                    ai_instance.update_game_state_on_landing(final_board_state) # Notify AI piece landed causing game over
+                    ai_instance.update_game_state(final_board_state) # Notify AI piece landed causing game over
 
         # Draw background and grid.
         screen.blit(background, (0, 0))
