@@ -43,6 +43,7 @@ class Block(pygame.sprite.Sprite):
         )
         self.current = True
         self.struct = np.array(self.struct)
+        self.shape_name = self.__class__.__name__ # Add shape_name attribute
         # Initial random rotation and flip.
         if random.randint(0, 1):
             self.struct = np.rot90(self.struct)

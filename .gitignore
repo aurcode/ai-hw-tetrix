@@ -1,1 +1,13 @@
 __pycache__
+.ipynb_checkpoints
+*.pyc
+.vscode
+.virtual_documents
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info
+anaconda_*
+*.conda
+.json
