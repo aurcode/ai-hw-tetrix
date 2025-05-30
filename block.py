@@ -45,8 +45,10 @@ class Block(pygame.sprite.Sprite):
         self.struct = np.array(self.struct)
         self.shape_name = self.__class__.__name__ # Add shape_name attribute
         # Initial random rotation and flip.
+        self.rotation = 0 # Initialize rotation
         if random.randint(0, 1):
             self.struct = np.rot90(self.struct)
+            self.rotation = (self.rotation + 90) % 360
         if random.randint(0, 1):
             # Flip in the X axis.
             self.struct = np.flip(self.struct, 0)
@@ -155,6 +157,19 @@ class Block(pygame.sprite.Sprite):
                 break
             self.y -= 1
         self.struct = np.rot90(self.struct)
+        self.rotation = (self.rotation + 90) % 360
+
+    def get_points(self):
+        """
+        Returns a list of (x, y) tuples representing the global grid coordinates
+        of each filled tile in the block.
+        """
+        points = []
+        for y_offset, row in enumerate(self.struct):
+            for x_offset, cell in enumerate(row):
+                if cell:
+                    points.append((self.x + x_offset, self.y + y_offset))
+        return points
 
     def update(self):
         if self.current:

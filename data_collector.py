@@ -65,10 +65,10 @@ class RandomAIPlayer: # Renamed from SimpleAI
         pass
 
 
-class NNAIPlayer:
+class DataCollector:
     def __init__(self, grid_width, grid_height):
         """
-        Initializes the NN AI Player for data collection.
+        Initializes the Data Collector.
         Args:
             grid_width (int): The width of the game grid.
             grid_height (int): The height of the game grid.
@@ -76,11 +76,11 @@ class NNAIPlayer:
         self.grid_width = grid_width
         self.grid_height = grid_height
         self.collected_data = [] # List to store (game_state, action) pairs
-        print(f"NNAIPlayer initialized for a {grid_width}x{grid_height} grid. Data collection active.")
+        print(f"DataCollector initialized for a {grid_width}x{grid_height} grid. Data collection active.")
 
     def get_next_move(self, game_board_state, current_block, next_block):
         """
-        For NNAIPlayer, this method returns an empty list as the human player
+        For DataCollector, this method returns an empty list as the human player
         will be making the moves. The purpose is to collect data.
         """
         return []
@@ -102,6 +102,8 @@ class NNAIPlayer:
             "board_state": board_list,
             "current_block_shape": current_block.shape_name if current_block else None,
             "current_block_pos": (current_block.x, current_block.y) if current_block else None,
+            "current_block_rotation": current_block.rotation if current_block else None, # Added rotation
+            "current_block_points": current_block.get_points() if current_block else None, # Added points
             "next_block_shape": next_block.shape_name if next_block else None,
             "action": action_key # Store the raw key for now
         }

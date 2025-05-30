@@ -13,7 +13,8 @@ from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_H
 from utils import draw_grid, draw_centered_surface
 from block import TopReached
 from blocks_group import BlocksGroup
-from ai_player import RandomAIPlayer, NNAIPlayer # Import both AI classes
+from data_collector import RandomAIPlayer, DataCollector # Import RandomAIPlayer and DataCollector
+from ai_player import NNAIPlayer # Import the new NNAIPlayer
 
 
 def main():
@@ -50,7 +51,8 @@ def main():
     menu_options = [
         "Human Player", 
         "Random AI Player", 
-        "NNAI Player (Data Collection)", # New AI for data collection
+        "Data Collection Player", # Renamed for clarity
+        "NN AI Player (Gameplay)", # New option for the actual NN AI
         "AI Player 3 (Placeholder)", 
         "AI Player 4 (Placeholder)", 
         "AI Player 5 (Placeholder)", 
@@ -94,21 +96,24 @@ def main():
                             player_type = "random_ai" # Internal name for Random AI
                             ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
                         elif selected_option_index == 2:
-                            player_type = "nn_ai_collect" # Internal name for NNAI data collection
-                            ai_instance = NNAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
+                            player_type = "data_collection" # Internal name for DataCollector
+                            ai_instance = DataCollector(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
                         elif selected_option_index == 3:
+                            player_type = "nn_ai_gameplay" # Internal name for NN AI gameplay
+                            ai_instance = NNAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES)
+                        elif selected_option_index == 4: # Shifted index for placeholders
                             player_type = "ai3" # Placeholder
                             print("AI Player 3 selected - using RandomAIPlayer as placeholder for now.")
                             ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
-                        elif selected_option_index == 4:
+                        elif selected_option_index == 5:
                             player_type = "ai4" # Placeholder
                             print("AI Player 4 selected - using RandomAIPlayer as placeholder for now.")
                             ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
-                        elif selected_option_index == 5:
+                        elif selected_option_index == 6:
                             player_type = "ai5" # Placeholder
                             print("AI Player 5 selected - using RandomAIPlayer as placeholder for now.")
                             ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
-                        elif selected_option_index == 6:
+                        elif selected_option_index == 7: # New index for last placeholder
                             player_type = "ai6" # Placeholder
                             print("AI Player 6 selected - using RandomAIPlayer as placeholder for now.")
                             ai_instance = RandomAIPlayer(grid_width=BOARD_WIDTH_TILES, grid_height=BOARD_HEIGHT_TILES) # Placeholder
@@ -146,17 +151,17 @@ def main():
                 break
             elif event.type == pygame.KEYUP:
                 if not paused and not game_over:
-                    if player_type == "human" or player_type == "nn_ai_collect": # Process human input
+                    if player_type == "human" or player_type == "data_collection": # Process human input
                         if event.key in MOVEMENT_KEYS:
                             blocks.stop_moving_current_block()
-                            if player_type == "nn_ai_collect":
+                            if player_type == "data_collection":
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
                                 ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
                         elif event.key == pygame.K_UP:
                             blocks.rotate_current_block()
-                            if player_type == "nn_ai_collect":
+                            if player_type == "data_collection":
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
@@ -164,7 +169,7 @@ def main():
                 if event.key == pygame.K_p:
                     paused = not paused
                 if game_over and event.key == pygame.K_RETURN: # Restart game or go to menu
-                    if player_type == "nn_ai_collect" and ai_instance:
+                    if player_type == "data_collection" and ai_instance:
                         ai_instance.save_data() # Save data when game ends and returning to menu
                     menu_active = True # Go back to menu
                     # Reset game state variables
@@ -181,7 +186,7 @@ def main():
                 continue
 
             # --- AI Control Logic (for actual AI players) ---
-            if player_type in ["random_ai", "ai3", "ai4", "ai5", "ai6"] and ai_instance and not paused and not game_over:
+            if player_type in ["random_ai", "nn_ai_gameplay", "ai3", "ai4", "ai5", "ai6"] and ai_instance and not paused and not game_over:
                 # 1. Get game state from blocks
                 game_board_state = blocks.get_board_state_array()
                 current_block_obj = blocks.current_block
@@ -206,19 +211,19 @@ def main():
                         blocks.update_current_block(force_move=True)
                     # Add more actions like hard drop if needed
 
-            # --- Human Input Processing (for human and NNAI data collection) ---
-            if player_type == "human" or player_type == "nn_ai_collect":
+            # --- Human Input Processing (for human and Data Collection) ---
+            if player_type == "human" or player_type == "data_collection":
                 if event.type == pygame.KEYDOWN:
                     if event.key in MOVEMENT_KEYS:
                         blocks.start_moving_current_block(event.key)
-                        if player_type == "nn_ai_collect":
+                        if player_type == "data_collection":
                             # Log KEYDOWN for continuous movement start
                             game_board_state = blocks.get_board_state_array()
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
                             ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
                     elif event.key == pygame.K_UP: # Rotation is a KEYDOWN event
-                        if player_type == "nn_ai_collect":
+                        if player_type == "data_collection":
                             game_board_state = blocks.get_board_state_array()
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
@@ -229,7 +234,7 @@ def main():
                 if event.type == EVENT_UPDATE_CURRENT_BLOCK: # Natural fall
                     blocks.update_current_block()
                 elif event.type == EVENT_MOVE_CURRENT_BLOCK: # Continuous movement for human
-                    if player_type == "human" or player_type == "nn_ai_collect":
+                    if player_type == "human" or player_type == "data_collection":
                         blocks.move_current_block()
                     # AI movement is handled above based on ai_actions, not this timer directly.
 
@@ -238,7 +243,7 @@ def main():
                 if ai_instance and hasattr(ai_instance, 'update_game_state'):
                     final_board_state = blocks.get_board_state_array()
                     ai_instance.update_game_state(final_board_state)
-                if player_type == "nn_ai_collect" and ai_instance:
+                if player_type == "data_collection" and ai_instance:
                     ai_instance.save_data() # Save data if game over
         # Draw background and grid.
         screen.blit(background, (0, 0))
