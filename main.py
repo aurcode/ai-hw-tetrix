@@ -158,14 +158,14 @@ def main():
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
-                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
+                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
                         elif event.key == pygame.K_UP:
                             blocks.rotate_current_block()
                             if player_type == "data_collection":
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
-                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
+                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
                 if event.key == pygame.K_p:
                     paused = not paused
                 if game_over and event.key == pygame.K_RETURN: # Restart game or go to menu
@@ -221,13 +221,13 @@ def main():
                             game_board_state = blocks.get_board_state_array()
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
-                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
+                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
                     elif event.key == pygame.K_UP: # Rotation is a KEYDOWN event
                         if player_type == "data_collection":
                             game_board_state = blocks.get_board_state_array()
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
-                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key)
+                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
             
             # --- Game Logic (Movement, Updates) ---
             try:

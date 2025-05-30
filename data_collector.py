@@ -85,14 +85,15 @@ class DataCollector:
         """
         return []
 
-    def log_action(self, game_board_state, current_block, next_block, action_key):
+    def log_action(self, game_board_state, current_block, next_block, action_key, score):
         """
-        Logs the current game state and the action taken by the human player.
+        Logs the current game state, the action taken by the human player, and the current score.
         Args:
             game_board_state (np.array): The 2D numpy array of the game board.
             current_block (Block): The current falling block.
             next_block (Block): The next block.
             action_key (int): The pygame.K_* key representing the action taken.
+            score (int): The current score of the player.
         """
         # Convert numpy array to a list for JSON serialization if needed later
         board_list = game_board_state.tolist() if isinstance(game_board_state, np.ndarray) else game_board_state
@@ -105,7 +106,8 @@ class DataCollector:
             "current_block_rotation": current_block.rotation if current_block else None, # Added rotation
             "current_block_points": current_block.get_points() if current_block else None, # Added points
             "next_block_shape": next_block.shape_name if next_block else None,
-            "action": action_key # Store the raw key for now
+            "action": action_key, # Store the raw key for now
+            "score": score # Added current score
         }
         self.collected_data.append(data_point)
         # print(f"Logged action: {action_key}")
