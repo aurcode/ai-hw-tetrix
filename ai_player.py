@@ -175,13 +175,16 @@ class TetrisActionPredictor(nn.Module):
     def __init__(self, input_size, num_actions):
         super(TetrisActionPredictor, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(input_size, 128),
+            nn.Linear(input_size, 512),  # Increased width
+            nn.ReLU(),
+            nn.Dropout(0.3),             # Adjusted dropout
+            nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128, 64),
+            nn.Linear(256, 128),         # Extra layer
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(64, num_actions)
+            nn.Dropout(0.2),
+            nn.Linear(128, num_actions)
         )
 
     def forward(self, x):
