@@ -3,12 +3,13 @@
 # dependencies = [
 #     "numpy",
 #     "pygame",
+#     "torch",
+#     "torchvision",
 # ]
 # ///
 
-import pygame
 import sys # Added for sys.exit
-
+import pygame
 from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
 from utils import draw_grid, draw_centered_surface
 from block import TopReached
