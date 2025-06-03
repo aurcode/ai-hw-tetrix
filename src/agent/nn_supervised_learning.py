@@ -21,7 +21,7 @@ pygame.init() # Initialize Pygame to use its key constants
 
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 20
-MODEL_FILENAME = "tetris_action_predictor.pth"
+MODEL_FILENAME = "models/tetris_action_predictor.pth"
 
 # Define standard Tetris shapes
 ALL_SHAPES = ['IBlock', 'OBlock', 'TBlock', 'SBlock', 'ZBlock', 'LBlock', 'JBlock']
@@ -158,7 +158,7 @@ class TetrisDataset(Dataset):
 # Ensure raw_data_points is not empty before accessing its first element
 
 import json
-file_path = "tetris_training_data.json"
+file_path = "data/tetris_training_data.json"
 with open(file_path, 'r') as f:
     raw_data_points = json.load(f)
 

@@ -3,9 +3,9 @@ import numpy as np
 import random
 from collections import OrderedDict
 
-from block import Block, SquareBlock, TBlock, LineBlock, LBlock, ZBlock, BottomReached, TopReached
-from constants import TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES # Added TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
-from utils import remove_empty_columns
+from src.game.block import Block, SquareBlock, TBlock, LineBlock, LBlock, ZBlock, BottomReached, TopReached
+from src.common.constants import TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES # Added TILE_SIZE, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
+from src.common.utils import remove_empty_columns
 
 class BlocksGroup(pygame.sprite.OrderedUpdates):
 

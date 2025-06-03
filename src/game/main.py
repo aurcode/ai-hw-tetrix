@@ -10,12 +10,11 @@
 
 import sys # Added for sys.exit
 import pygame
-from constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
-from utils import draw_grid, draw_centered_surface
-from block import TopReached
-from blocks_group import BlocksGroup
-from data_collector import RandomAIPlayer, DataCollector # Import RandomAIPlayer and DataCollector
-from ai_player import NNAIPlayer # Import the new NNAIPlayer
+from src.common.constants import WINDOW_WIDTH, WINDOW_HEIGHT, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, BOARD_WIDTH_TILES, BOARD_HEIGHT_TILES
+from src.common.utils import draw_grid, draw_centered_surface
+from src.game.block import TopReached
+from src.game.blocks_group import BlocksGroup
+from src.agent import RandomAIPlayer, DataCollector, NNAIPlayer
 
 
 def main():

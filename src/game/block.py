@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 import random
 from pygame import Rect
-from constants import TILE_SIZE, GRID_WIDTH, GRID_HEIGHT
+from src.common.constants import TILE_SIZE, GRID_WIDTH, GRID_HEIGHT
 
 class BottomReached(Exception):
     pass
