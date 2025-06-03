@@ -45,6 +45,8 @@ PYGAME_ACTION_MAP = {
 # Reverse mapping: Action names to Pygame keys (for NNAIPlayer output)
 ACTION_NAME_TO_PYGAME_KEY = {v: k for k, v in PYGAME_ACTION_MAP.items()}
 
+
+
 # --- Feature Engineering Functions (used by training and NNAIPlayer) ---
 def get_board_features(board_state_np):
     """Calculates features from the board state."""
@@ -92,9 +94,10 @@ def featurize_training_data(data_point):
      norm_bump, norm_lines) = get_board_features(board_state_np)
 
     current_shape_one_hot = np.zeros(len(ALL_SHAPES), dtype=float)
-    # Handle 'LineBlock' for training data if it exists, map to 'IBlock'
+    # Handle 'LineBlock' and 'SquareBlock' for training data if it exists
     current_shape_name = data_point['current_block_shape']
     if current_shape_name == 'LineBlock': current_shape_name = 'IBlock'
+    if current_shape_name == 'SquareBlock': current_shape_name = 'OBlock'
     shape_idx = SHAPE_TO_IDX.get(current_shape_name)
     if shape_idx is not None:
         current_shape_one_hot[shape_idx] = 1.0
@@ -106,6 +109,7 @@ def featurize_training_data(data_point):
     next_shape_one_hot = np.zeros(len(ALL_SHAPES), dtype=float)
     next_shape_name = data_point['next_block_shape']
     if next_shape_name == 'LineBlock': next_shape_name = 'IBlock'
+    if next_shape_name == 'SquareBlock': next_shape_name = 'OBlock'
     next_shape_idx = SHAPE_TO_IDX.get(next_shape_name)
     if next_shape_idx is not None:
         next_shape_one_hot[next_shape_idx] = 1.0
@@ -151,11 +155,19 @@ class TetrisDataset(Dataset):
                torch.tensor(self.labels_list[idx], dtype=torch.long)
 
 # --- PyTorch Model ---
+# Ensure raw_data_points is not empty before accessing its first element
+
 import json
-file_path = 'tetris_training_data.json'
+file_path = "tetris_training_data.json"
 with open(file_path, 'r') as f:
     raw_data_points = json.load(f)
 
+# Keep only the first 2523 data points to match the original script's behavior
+if isinstance(raw_data_points, list):
+    raw_data_points = raw_data_points[:2523]  # Limit to first 2523 points
+
+if not raw_data_points:
+    raise ValueError("raw_data_points is empty. Cannot determine INPUT_FEATURES_SIZE.")
 sample_features_for_size_calc, _ = featurize_training_data(raw_data_points[0])
 INPUT_FEATURES_SIZE = len(sample_features_for_size_calc)
 
@@ -204,8 +216,8 @@ def evaluate_model(model, dataloader, criterion):
     total_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
-    if len(dataloader) == 0:
-        print("Evaluation dataloader is empty. Skipping evaluation.")
+    if dataloader is None or len(dataloader) == 0 : # Check if dataloader is None or empty
+        print("Evaluation dataloader is empty or None. Skipping evaluation.")
         return 0.0
         
     with torch.no_grad():
@@ -223,13 +235,14 @@ def evaluate_model(model, dataloader, criterion):
     return accuracy
 
 # --- Placeholder Block Class (for NNAIPlayer integration) ---
-class Block:
+# This class should ideally match the structure of the Block class in your actual game (block.py)
+class Block: # Renamed to avoid conflict if block.py is imported directly
     def __init__(self, shape_name, rotation_degrees, x_pos, y_pos, points=None):
-        self.shape = shape_name # e.g., 'IBlock', 'LBlock'
-        self.rotation = rotation_degrees # e.g., 0, 90, 180, 270
-        self.x = x_pos # Column index of anchor point
-        self.y = y_pos # Row index of anchor point
-        self.points = points if points is not None else [] # list of [col, row] for block cells
+        self.shape_name = shape_name # Use shape_name to match user's block.py
+        self.rotation = rotation_degrees 
+        self.x = x_pos 
+        self.y = y_pos 
+        self.points = points if points is not None else [] 
 
 # --- NNAIPlayer Class ---
 class NNAIPlayer:
@@ -237,7 +250,6 @@ class NNAIPlayer:
         self.grid_width = grid_width
         self.grid_height = grid_height
         
-        # Ensure constants match those used during training
         self.board_width_const = BOARD_WIDTH
         self.board_height_const = BOARD_HEIGHT
         self.all_shapes_const = ALL_SHAPES
@@ -245,18 +257,17 @@ class NNAIPlayer:
         self.label_to_action_const = LABEL_TO_ACTION
         self.action_name_to_pygame_key_const = ACTION_NAME_TO_PYGAME_KEY
 
-        self.input_features_size = INPUT_FEATURES_SIZE # Global from training script
-        self.num_actions = NUM_ACTIONS # Global from training script
+        self.input_features_size = INPUT_FEATURES_SIZE 
+        self.num_actions = NUM_ACTIONS 
 
         self.model = TetrisActionPredictor(self.input_features_size, self.num_actions)
         
         if os.path.exists(model_path):
             try:
-                # Ensure model is loaded to the same device it was trained on, or specify map_location
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 self.model.load_state_dict(torch.load(model_path, map_location=device))
-                self.model.to(device) # Move model to device
-                self.model.eval() # Set to evaluation mode
+                self.model.to(device) 
+                self.model.eval() 
                 print(f"NNAIPlayer initialized. Loaded model from {model_path} to {device}.")
             except Exception as e:
                 print(f"Error loading model: {e}. NNAIPlayer will use an untrained model.")
@@ -270,28 +281,24 @@ class NNAIPlayer:
         """Converts live game state (board, current block obj, next block obj) into a feature vector."""
         
         (norm_col_heights, norm_agg_h, norm_holes, 
-         norm_bump, norm_lines) = get_board_features(game_board_state_np) # Re-use global function
+         norm_bump, norm_lines) = get_board_features(game_board_state_np)
 
-        # Current block shape (one-hot)
         current_shape_one_hot = np.zeros(len(self.all_shapes_const), dtype=float)
-        current_shape_name = current_block_obj.shape
-        if current_shape_name == 'LineBlock': current_shape_name = 'IBlock' # Consistency
+        current_shape_name = current_block_obj.shape_name # MODIFIED: Use .shape_name
+        if current_shape_name == 'LineBlock': current_shape_name = 'IBlock' 
+        if current_shape_name == 'SquareBlock': current_shape_name = 'OBlock' # ADDED: Mapping for SquareBlock
         shape_idx = self.shape_to_idx_const.get(current_shape_name)
         if shape_idx is not None:
             current_shape_one_hot[shape_idx] = 1.0
 
-        # Current block rotation (normalized)
         rotation_norm = float(current_block_obj.rotation) / 360.0
-
-        # Current block position (normalized)
-        # Assuming current_block_obj.x and current_block_obj.y are anchor points
         pos_x_norm = float(current_block_obj.x) / self.board_width_const
         pos_y_norm = float(current_block_obj.y) / self.board_height_const
         
-        # Next block shape (one-hot)
         next_shape_one_hot = np.zeros(len(self.all_shapes_const), dtype=float)
-        next_shape_name = next_block_obj.shape
-        if next_shape_name == 'LineBlock': next_shape_name = 'IBlock' # Consistency
+        next_shape_name = next_block_obj.shape_name # MODIFIED: Use .shape_name
+        if next_shape_name == 'LineBlock': next_shape_name = 'IBlock' 
+        if next_shape_name == 'SquareBlock': next_shape_name = 'OBlock' # ADDED: Mapping for SquareBlock
         next_shape_idx = self.shape_to_idx_const.get(next_shape_name)
         if next_shape_idx is not None:
             next_shape_one_hot[next_shape_idx] = 1.0
@@ -311,17 +318,29 @@ class NNAIPlayer:
         Determines the next move for the AI using the loaded neural network.
         Args:
             game_board_state (np.array): Current state of the game board.
-            current_block (Block): The current falling block object.
-            next_block (Block): The next block object.
+            current_block (Block): The current falling block object (should have .shape_name, .rotation, .x, .y).
+            next_block (Block): The next block object (should have .shape_name).
         Returns:
             list: A list containing a single Pygame key for the predicted action, 
                   or an empty list if no action is predicted or an error occurs.
         """
         try:
+            # Ensure current_block and next_block have the 'shape_name' attribute
+            if not hasattr(current_block, 'shape_name') or not hasattr(next_block, 'shape_name'):
+                print("Error: current_block or next_block object is missing 'shape_name' attribute.")
+                return []
+            if not hasattr(current_block, 'rotation'):
+                 print("Error: current_block object is missing 'rotation' attribute.")
+                 return []
+            if not hasattr(current_block, 'x') or not hasattr(current_block, 'y'):
+                 print("Error: current_block object is missing 'x' or 'y' attribute.")
+                 return []
+
+
             features_np = self._featurize_live_game_state(game_board_state, current_block, next_block)
-            features_tensor = torch.tensor(features_np, dtype=torch.float).unsqueeze(0) # Add batch dimension
+            features_tensor = torch.tensor(features_np, dtype=torch.float).unsqueeze(0) 
             
-            device = next(self.model.parameters()).device # Get device model is on
+            device = next(self.model.parameters()).device 
             features_tensor = features_tensor.to(device)
 
             with torch.no_grad():
@@ -333,31 +352,37 @@ class NNAIPlayer:
             if predicted_action_name:
                 pygame_key = self.action_name_to_pygame_key_const.get(predicted_action_name)
                 if pygame_key is not None:
-                    return [pygame_key] # Return as a list of actions
+                    return [pygame_key] 
                 else:
                     print(f"Warning: Predicted action name '{predicted_action_name}' has no Pygame key mapping.")
             else:
                 print(f"Warning: Predicted label index {predicted_label_idx.item()} has no action name mapping.")
 
+        except AttributeError as ae:
+            print(f"AttributeError in NNAIPlayer get_next_move: {ae}. Check block object structure.")
+            import traceback
+            traceback.print_exc()
         except Exception as e:
             print(f"Error in NNAIPlayer get_next_move: {e}")
             import traceback
             traceback.print_exc()
 
-        return [] # Default to no action if issues arise
+        return [] 
 
     def update_game_state(self, game_board_state):
-        pass # Placeholder
+        pass 
 
 
 # --- Main Execution ---
 if __name__ == '__main__':
     print("--- Tetris AI: Feature Engineering & PyTorch NN ---")
 
-    # 1. Prepare Data
-    # (Shape remapping and checks are done within featurize_training_data now)
-
     try:
+        if not raw_data_points: # Check if raw_data_points is empty
+             print("raw_data_points is empty. Cannot proceed with dataset creation. Exiting.")
+             pygame.quit()
+             exit()
+
         dataset = TetrisDataset(raw_data_points)
         if len(dataset) == 0:
             print("No data to train on after filtering. Exiting.")
@@ -369,94 +394,88 @@ if __name__ == '__main__':
         if train_size == 0 or test_size == 0 or len(dataset) < 2 : 
              print(f"Dataset too small for train/test split (Total: {len(dataset)}). Using all for training and testing.")
              train_dataset = dataset
-             test_dataset = dataset # Use the same dataset for testing if too small
+             test_dataset = dataset 
         else:
             train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
         print(f"Dataset size: Total={len(dataset)}, Train={len(train_dataset)}, Test={len(test_dataset)}")
 
-        # Ensure dataloaders are not empty
         train_loader = DataLoader(train_dataset, batch_size=min(2, len(train_dataset)), shuffle=True) if len(train_dataset) > 0 else None
         test_loader = DataLoader(test_dataset, batch_size=min(2, len(test_dataset)), shuffle=False) if len(test_dataset) > 0 else None
 
 
-        # 2. Initialize Model, Loss, Optimizer
         model = TetrisActionPredictor(INPUT_FEATURES_SIZE, NUM_ACTIONS)
         criterion = nn.CrossEntropyLoss() 
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        # 3. Train the model
         if train_loader:
             num_training_epochs = 50 
             if len(train_dataset) < 5: 
                 num_training_epochs = 20
             train_model(model, train_loader, criterion, optimizer, num_epochs=num_training_epochs)
             
-            # --- SAVE THE TRAINED MODEL ---
             torch.save(model.state_dict(), MODEL_FILENAME)
             print(f"Trained model saved to {MODEL_FILENAME}")
         else:
             print("Skipping training as train_loader is empty.")
 
 
-        # 4. Evaluate the model
         if test_loader:
             evaluate_model(model, test_loader, criterion)
         else:
-            print("Skipping evaluation as test_loader is empty.")
+            print("Skipping evaluation as test_loader is empty or None.") # MODIFIED message
         
-        # 5. Example: Get prediction for a single data point (the user's sample)
         print("\n--- Example Prediction for a single data point (using featurize_training_data) ---")
-        user_sample_point_raw = raw_data_points[4] 
+        if raw_data_points: # Check if raw_data_points is not empty
+            user_sample_point_raw = raw_data_points[min(4, len(raw_data_points)-1)] # Avoid index error
 
-        features_for_sample, actual_label_idx = featurize_training_data(user_sample_point_raw)
-        
-        if actual_label_idx != -1:
-            features_tensor = torch.tensor(features_for_sample, dtype=torch.float).unsqueeze(0)
-            device = next(model.parameters()).device
-            features_tensor = features_tensor.to(device)
+            features_for_sample, actual_label_idx = featurize_training_data(user_sample_point_raw)
             
-            model.eval()
-            with torch.no_grad():
-                prediction_scores = model(features_tensor)
-                _, predicted_label_idx = torch.max(prediction_scores, 1)
-            
-            predicted_action_name = LABEL_TO_ACTION.get(predicted_label_idx.item(), "Unknown")
-            actual_action_name = LABEL_TO_ACTION.get(actual_label_idx, "Unknown")
-            
-            print(f"Data Point Details (from raw_data_points[4]):")
-            print(f"  Current Shape: {user_sample_point_raw['current_block_shape']}, Rotation: {user_sample_point_raw['current_block_rotation']}")
-            print(f"  Actual Action: {actual_action_name}, Predicted Action: {predicted_action_name}")
+            if actual_label_idx != -1:
+                features_tensor = torch.tensor(features_for_sample, dtype=torch.float).unsqueeze(0)
+                device = next(model.parameters()).device
+                features_tensor = features_tensor.to(device)
+                
+                model.eval()
+                with torch.no_grad():
+                    prediction_scores = model(features_tensor)
+                    _, predicted_label_idx = torch.max(prediction_scores, 1)
+                
+                predicted_action_name = LABEL_TO_ACTION.get(predicted_label_idx.item(), "Unknown")
+                actual_action_name = LABEL_TO_ACTION.get(actual_label_idx, "Unknown")
+                
+                print(f"Data Point Details (from raw_data_points index {min(4, len(raw_data_points)-1)}):")
+                print(f"  Current Shape: {user_sample_point_raw['current_block_shape']}, Rotation: {user_sample_point_raw['current_block_rotation']}")
+                print(f"  Actual Action: {actual_action_name}, Predicted Action: {predicted_action_name}")
+            else:
+                print(f"Could not make prediction for user sample as its action was unmapped: {user_sample_point_raw.get('action')}")
         else:
-            print(f"Could not make prediction for user sample as its action was unmapped: {user_sample_point_raw.get('action')}")
+            print("raw_data_points is empty, cannot run example prediction.")
 
-        # --- Example Usage of NNAIPlayer ---
+
         print("\n--- Example Usage of NNAIPlayer ---")
-        if os.path.exists(MODEL_FILENAME): # Only test if model was saved
+        if os.path.exists(MODEL_FILENAME): 
             ai_player = NNAIPlayer(grid_width=BOARD_WIDTH, grid_height=BOARD_HEIGHT, model_path=MODEL_FILENAME)
 
-            # Create dummy game state for testing NNAIPlayer
             dummy_board_state = np.zeros((BOARD_HEIGHT, BOARD_WIDTH), dtype=int)
-            dummy_board_state[18, 3:7] = 1 # A line at the bottom
-            dummy_board_state[19, :] = 1   # Full line at the very bottom
+            dummy_board_state[18, 3:7] = 1 
+            dummy_board_state[19, :] = 1   
             
-            # current_block_shape, rotation_degrees, x_pos, y_pos
+            # Use the placeholder Block class defined in this script for the dummy objects
             dummy_current_block = Block(shape_name='TBlock', rotation_degrees=90, x_pos=4, y_pos=2)
-            dummy_next_block = Block(shape_name='LBlock', rotation_degrees=0, x_pos=0, y_pos=0) # Pos for next doesn't matter for features
+            dummy_next_block = Block(shape_name='LBlock', rotation_degrees=0, x_pos=0, y_pos=0) 
 
             print("Querying NNAIPlayer for next move with dummy state:")
             predicted_actions_list = ai_player.get_next_move(dummy_board_state, dummy_current_block, dummy_next_block)
             
             if predicted_actions_list:
                 predicted_pygame_key = predicted_actions_list[0]
-                # Try to get a human-readable name for the key
                 action_key_name = pygame.key.name(predicted_pygame_key) if predicted_pygame_key else "None"
                 print(f"NNAIPlayer predicted action (Pygame Key): {predicted_pygame_key} ({action_key_name})")
             else:
                 print("NNAIPlayer did not predict a valid action.")
         else:
             print(f"Skipping NNAIPlayer example usage as model file {MODEL_FILENAME} was not found (likely due to empty training set).")
-
 
     except ValueError as e:
         print(f"A ValueError occurred: {e}")
@@ -469,3 +488,4 @@ if __name__ == '__main__':
 
     pygame.quit() 
     print("\n--- Script Finished ---")
+
