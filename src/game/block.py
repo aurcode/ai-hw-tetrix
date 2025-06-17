@@ -15,14 +15,15 @@ class TopReached(Exception):
 class Block(pygame.sprite.Sprite):
 
     @staticmethod
-    def collide(block, group):
+    def collide(block, group, ignore_block=None): # Added ignore_block parameter
         """
         Check if the specified block collides with some other block
         in the group.
         """
         for other_block in group:
-            # Ignore the current block which will always collide with itself.
-            if block == other_block:
+            # Ignore the current block which will always collide with itself,
+            # or any specified block to ignore.
+            if block == other_block or other_block == ignore_block:
                 continue
             if pygame.sprite.collide_mask(block, other_block) is not None:
                 return True
@@ -114,31 +115,31 @@ class Block(pygame.sprite.Sprite):
         self._y = value
         self.rect.top = value * TILE_SIZE
 
-    def move_left(self, group):
+    def move_left(self, group, ignore_block=None):
         self.x -= 1
         # Check if we reached the left margin.
-        if self.x < 0 or Block.collide(self, group):
+        if self.x < 0 or Block.collide(self, group, ignore_block):
             self.x += 1
 
-    def move_right(self, group):
+    def move_right(self, group, ignore_block=None):
         self.x += 1
         # Check if we reached the right margin or collided with another
         # block.
-        if self.rect.right > GRID_WIDTH or Block.collide(self, group):
+        if self.rect.right > GRID_WIDTH or Block.collide(self, group, ignore_block):
             # Rollback.
             self.x -= 1
 
-    def move_down(self, group):
+    def move_down(self, group, ignore_block=None):
         self.y += 1
         # Check if the block reached the bottom or collided with
         # another one.
-        if self.rect.bottom > GRID_HEIGHT or Block.collide(self, group):
+        if self.rect.bottom > GRID_HEIGHT or Block.collide(self, group, ignore_block):
             # Rollback to the previous position.
             self.y -= 1
             self.current = False
             raise BottomReached
 
-    def rotate(self, group):
+    def rotate(self, group, ignore_block=None):
         self.image = pygame.transform.rotate(self.image, 90)
         # Once rotated we need to update the size and position.
         self.rect.width = self.image.get_width()
@@ -153,7 +154,7 @@ class Block(pygame.sprite.Sprite):
         while self.rect.bottom > GRID_HEIGHT:
             self.y -= 1
         while True:
-            if not Block.collide(self, group):
+            if not Block.collide(self, group, ignore_block):
                 break
             self.y -= 1
         self.struct = np.rot90(self.struct)
@@ -174,6 +175,22 @@ class Block(pygame.sprite.Sprite):
     def update(self):
         if self.current:
             self.move_down()
+
+    def clone(self):
+        """
+        Creates a new Block instance with the same properties as the current one.
+        Used for ghost piece calculation.
+        """
+        # Create a new instance of the same class (e.g., SquareBlock, TBlock)
+        new_block = type(self)() 
+        new_block.x = self.x
+        new_block.y = self.y
+        new_block.color = self.color
+        new_block.struct = np.copy(self.struct) # Use np.copy for numpy arrays
+        new_block.current = self.current
+        new_block.rotation = self.rotation
+        new_block.redraw() # Redraw to update image and mask
+        return new_block
 
 
 class SquareBlock(Block):

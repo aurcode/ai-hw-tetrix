@@ -32,7 +32,7 @@ class BlocksGroup(pygame.sprite.OrderedUpdates):
         # Start checking from the bottom.
         for i, row in enumerate(self.grid[::-1]):
             if all(row):
-                self.score += 5
+                self.score += 1 # Increase score by 1 for each line cleared
                 # Get the blocks affected by the line deletion and
                 # remove duplicates.
                 affected_blocks = list(OrderedDict.fromkeys(self.grid[-1 - i]))
@@ -155,6 +155,20 @@ class BlocksGroup(pygame.sprite.OrderedUpdates):
             self.current_block.rotate(self)
             self.update_grid()
 
+    def hard_drop_current_block(self):
+        """
+        Moves the current block all the way down until it lands.
+        """
+        while True:
+            try:
+                self.current_block.move_down(self)
+            except BottomReached:
+                self.stop_moving_current_block()
+                self._create_new_block()
+                break # Exit the loop once the block has landed
+            else:
+                self.update_grid() # Update grid after each step down during hard drop
+
     def get_board_state_array(self):
         """
         Creates a 2D numpy array representing the current state of the game board.
@@ -182,3 +196,22 @@ class BlocksGroup(pygame.sprite.OrderedUpdates):
                                 # ideally shouldn't happen if collision detection is correct.
                                 # print(f"Warning: Part of landed block {block_sprite} at ({board_x},{board_y}) is out of bounds.")
         return board_array
+
+    def get_ghost_coords(self):
+        """
+        Calculates the final landing position (x, y) of the current block
+        if it were to hard drop.
+        Returns (x, y) tuple of the ghost block's top-left corner.
+        """
+        ghost_block = self.current_block.clone() # Create a copy to simulate movement
+        
+        final_y = ghost_block.y
+        while True:
+            try:
+                # Pass the actual current_block as ignore_block to prevent self-collision
+                ghost_block.move_down(self, ignore_block=self.current_block)
+                final_y = ghost_block.y # Update final_y as it moves down
+            except BottomReached:
+                break
+        
+        return ghost_block.x, final_y

@@ -69,7 +69,8 @@ def main():
     game_over_text = font.render("¡Game over!", True, (255, 220, 0), bgcolor)
 
     # Event constants.
-    MOVEMENT_KEYS = pygame.K_LEFT, pygame.K_RIGHT, pygame.K_DOWN
+    MOVEMENT_KEYS = pygame.K_LEFT, pygame.K_RIGHT # Only left/right for continuous movement
+    HARD_DROP_KEY = pygame.K_DOWN # Hard drop is now down arrow
     EVENT_UPDATE_CURRENT_BLOCK = pygame.USEREVENT + 1
     EVENT_MOVE_CURRENT_BLOCK = pygame.USEREVENT + 2
     pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, 1000)
@@ -207,9 +208,16 @@ def main():
                         blocks.stop_moving_current_block()
                     elif action == pygame.K_UP: # Rotate
                         blocks.rotate_current_block()
-                    elif action == pygame.K_DOWN: # Soft drop one step
-                        blocks.update_current_block(force_move=True)
-                    # Add more actions like hard drop if needed
+                    elif action == HARD_DROP_KEY: # Hard drop
+                        try:
+                            blocks.hard_drop_current_block()
+                        except TopReached:
+                            game_over = True
+                            if ai_instance and hasattr(ai_instance, 'update_game_state'):
+                                final_board_state = blocks.get_board_state_array()
+                                ai_instance.update_game_state(final_board_state)
+                            if player_type == "data_collection" and ai_instance:
+                                ai_instance.save_data() # Save data if game over
 
             # --- Human Input Processing (for human and Data Collection) ---
             if player_type == "human" or player_type == "data_collection":
@@ -228,6 +236,21 @@ def main():
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
                             ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
+                    elif event.key == HARD_DROP_KEY: # Hard drop
+                        try:
+                            blocks.hard_drop_current_block()
+                            if player_type == "data_collection":
+                                game_board_state = blocks.get_board_state_array()
+                                current_block_obj = blocks.current_block
+                                next_block_obj = blocks.next_block
+                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
+                        except TopReached:
+                            game_over = True
+                            if ai_instance and hasattr(ai_instance, 'update_game_state'):
+                                final_board_state = blocks.get_board_state_array()
+                                ai_instance.update_game_state(final_board_state)
+                            if player_type == "data_collection" and ai_instance:
+                                ai_instance.save_data() # Save data if game over
             
             # --- Game Logic (Movement, Updates) ---
             try:
@@ -247,6 +270,14 @@ def main():
                     ai_instance.save_data() # Save data if game over
         # Draw background and grid.
         screen.blit(background, (0, 0))
+
+        # Draw ghost piece
+        if blocks.current_block: # Ensure there's a current block
+            ghost_x, ghost_y = blocks.get_ghost_coords()
+            ghost_image = blocks.current_block.image.copy()
+            ghost_image.set_alpha(90) # Set transparency (0-255)
+            screen.blit(ghost_image, (ghost_x * TILE_SIZE, ghost_y * TILE_SIZE))
+
         # Blocks.
         blocks.draw(screen)
         # Sidebar with misc. information.
