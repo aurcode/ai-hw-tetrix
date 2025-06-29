@@ -18,6 +18,10 @@ from src.common.constants import (
     GRID_HEIGHT,
     BOARD_WIDTH_TILES,
     BOARD_HEIGHT_TILES,
+    NORMAL_FALL_SPEED_MS,
+    FAST_FALL_SPEED_MS,
+    NORMAL_MOVE_SPEED_MS,
+    FAST_MOVE_SPEED_MS,
 )
 from src.common.utils import draw_grid, draw_centered_surface
 from src.game.block import TopReached
@@ -95,8 +99,9 @@ def main():
     HARD_DROP_KEY = pygame.K_DOWN  # Hard drop is now down arrow
     EVENT_UPDATE_CURRENT_BLOCK = pygame.USEREVENT + 1
     EVENT_MOVE_CURRENT_BLOCK = pygame.USEREVENT + 2
-    pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, 1000)
-    pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, 100)
+    # Initial timer settings (will be adjusted based on player type)
+    pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, NORMAL_FALL_SPEED_MS)
+    pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, NORMAL_MOVE_SPEED_MS)
 
     blocks = BlocksGroup()  # Initialize blocks here, might be reset after menu
 
@@ -185,9 +190,29 @@ def main():
                         blocks = (
                             BlocksGroup()
                         )  # Re-initialize blocks for the selected mode
-                        # Ensure timers are set correctly if they were stopped or changed
-                        pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, 1000)
-                        pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, 100)
+
+                        # Adjust game speed based on player type
+                        if player_type in [
+                            "random_ai",
+                            "nn_ai_gameplay",
+                            "q_learning_play",
+                            "heuristic",
+                            "ai5",
+                            "ai6",
+                        ]:
+                            pygame.time.set_timer(
+                                EVENT_UPDATE_CURRENT_BLOCK, FAST_FALL_SPEED_MS
+                            )
+                            pygame.time.set_timer(
+                                EVENT_MOVE_CURRENT_BLOCK, FAST_MOVE_SPEED_MS
+                            )
+                        else:
+                            pygame.time.set_timer(
+                                EVENT_UPDATE_CURRENT_BLOCK, NORMAL_FALL_SPEED_MS
+                            )
+                            pygame.time.set_timer(
+                                EVENT_MOVE_CURRENT_BLOCK, NORMAL_MOVE_SPEED_MS
+                            )
 
             # Draw Menu
             screen.blit(
