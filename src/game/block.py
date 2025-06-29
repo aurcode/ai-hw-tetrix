@@ -4,6 +4,7 @@ import random
 from pygame import Rect
 from src.common.constants import TILE_SIZE, GRID_WIDTH, GRID_HEIGHT
 
+
 class BottomReached(Exception):
     pass
 
@@ -15,7 +16,7 @@ class TopReached(Exception):
 class Block(pygame.sprite.Sprite):
 
     @staticmethod
-    def collide(block, group, ignore_block=None): # Added ignore_block parameter
+    def collide(block, group, ignore_block=None):  # Added ignore_block parameter
         """
         Check if the specified block collides with some other block
         in the group.
@@ -44,9 +45,9 @@ class Block(pygame.sprite.Sprite):
         )
         self.current = True
         self.struct = np.array(self.struct)
-        self.shape_name = self.__class__.__name__ # Add shape_name attribute
+        self.shape_name = self.__class__.__name__  # Add shape_name attribute
         # Initial random rotation and flip.
-        self.rotation = 0 # Initialize rotation
+        self.rotation = 0  # Initialize rotation
         if random.randint(0, 1):
             self.struct = np.rot90(self.struct)
             self.rotation = (self.rotation + 90) % 360
@@ -139,26 +140,27 @@ class Block(pygame.sprite.Sprite):
             self.current = False
             raise BottomReached
 
-    def rotate(self, group, ignore_block=None):
-        self.image = pygame.transform.rotate(self.image, 90)
-        # Once rotated we need to update the size and position.
-        self.rect.width = self.image.get_width()
-        self.rect.height = self.image.get_height()
-        self._create_mask()
-        # Check the new position doesn't exceed the limits or collide
-        # with other blocks and adjust it if necessary.
-        while self.rect.right > GRID_WIDTH:
-            self.x -= 1
-        while self.rect.left < 0:
-            self.x += 1
-        while self.rect.bottom > GRID_HEIGHT:
-            self.y -= 1
-        while True:
-            if not Block.collide(self, group, ignore_block):
-                break
-            self.y -= 1
-        self.struct = np.rot90(self.struct)
-        self.rotation = (self.rotation + 90) % 360
+    def rotate(self, group, ignore_block=None, n_rotations=1):
+        for _ in range(n_rotations):
+            self.image = pygame.transform.rotate(self.image, 90)
+            # Once rotated we need to update the size and position.
+            self.rect.width = self.image.get_width()
+            self.rect.height = self.image.get_height()
+            self._create_mask()
+            # Check the new position doesn't exceed the limits or collide
+            # with other blocks and adjust it if necessary.
+            while self.rect.right > GRID_WIDTH:
+                self.x -= 1
+            while self.rect.left < 0:
+                self.x += 1
+            while self.rect.bottom > GRID_HEIGHT:
+                self.y -= 1
+            while True:
+                if group is None or not Block.collide(self, group, ignore_block):
+                    break
+                self.y -= 1
+            self.struct = np.rot90(self.struct)
+            self.rotation = (self.rotation + 90) % 360
 
     def get_points(self):
         """
@@ -182,14 +184,14 @@ class Block(pygame.sprite.Sprite):
         Used for ghost piece calculation.
         """
         # Create a new instance of the same class (e.g., SquareBlock, TBlock)
-        new_block = type(self)() 
+        new_block = type(self)()
         new_block.x = self.x
         new_block.y = self.y
         new_block.color = self.color
-        new_block.struct = np.copy(self.struct) # Use np.copy for numpy arrays
+        new_block.struct = np.copy(self.struct)  # Use np.copy for numpy arrays
         new_block.current = self.current
         new_block.rotation = self.rotation
-        new_block.redraw() # Redraw to update image and mask
+        new_block.redraw()  # Redraw to update image and mask
         return new_block
 
 

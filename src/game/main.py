@@ -32,6 +32,7 @@ from src.agent import (
     NNAIPlayer,
     QLearningAIPlayer,
     HeuristicAIPlayer,
+    DeepQNAIPlayer,
 )
 
 
@@ -73,7 +74,7 @@ def main():
         "NN AI Player (Gameplay)",  # New option for the actual NN AI
         "Play with Q-Learning AI",
         "Heuristic AI Player (Gameplay)",  # Placeholder for heuristic AI
-        "AI Player 5 (Placeholder)",
+        "DeepQN AI Player (Gameplay)",
         "AI Player 6 (Placeholder)",
     ]
     selected_option_index = 0
@@ -163,14 +164,12 @@ def main():
                                 # grid_height=BOARD_HEIGHT_TILES,
                             )  # Placeholder
                         elif selected_option_index == 6:
-                            player_type = "ai5"  # Placeholder
-                            print(
-                                "AI Player 5 selected - using RandomAIPlayer as placeholder for now."
-                            )
-                            ai_instance = RandomAIPlayer(
+                            player_type = "deep_qn_ai"
+                            ai_instance = DeepQNAIPlayer(
                                 grid_width=BOARD_WIDTH_TILES,
                                 grid_height=BOARD_HEIGHT_TILES,
-                            )  # Placeholder
+                                load_model=True,
+                            )
                         elif (
                             selected_option_index == 7
                         ):  # New index for last placeholder
