@@ -20,15 +20,15 @@ class DataCollector:
         """
         return []
 
-    def log_action(self, game_board_state, current_block, next_block, action_key, score):
+    def log_state(self, game_board_state, current_block, next_block, score, action_key=None):
         """
-        Logs the current game state, the action taken by the human player, and the current score.
+        Logs the current game state, the action taken (if any), and the current score.
         Args:
             game_board_state (np.array): The 2D numpy array of the game board.
             current_block (Block): The current falling block.
             next_block (Block): The next block.
-            action_key (int): The pygame.K_* key representing the action taken.
             score (int): The current score of the player.
+            action_key (int, optional): The pygame.K_* key representing the action taken. None if no action.
         """
         # Convert numpy array to a list for JSON serialization if needed later
         board_list = game_board_state.tolist() if isinstance(game_board_state, np.ndarray) else game_board_state
@@ -38,20 +38,34 @@ class DataCollector:
             "board_state": board_list,
             "current_block_shape": current_block.shape_name if current_block else None,
             "current_block_pos": (current_block.x, current_block.y) if current_block else None,
-            "current_block_rotation": current_block.rotation if current_block else None, # Added rotation
-            "current_block_points": current_block.get_points() if current_block else None, # Added points
+            "current_block_rotation": current_block.rotation if current_block else None,
+            "current_block_points": current_block.get_points() if current_block else None,
+            "current_block_struct": current_block.struct.tolist() if current_block else None,
             "next_block_shape": next_block.shape_name if next_block else None,
-            "action": action_key, # Store the raw key for now
-            "score": score # Added current score
+            "next_block_struct": next_block.struct.tolist() if next_block else None,
+            "action": action_key, # Store the raw key, None if no action
+            "score": score
         }
         self.collected_data.append(data_point)
-        # print(f"Logged action: {action_key}")
+        # print(f"Logged state with action: {action_key}" if action_key else "Logged state (no action)")
+
+    def log_action(self, game_board_state, current_block, next_block, action_key, score):
+        """
+        This method is now a wrapper that calls log_state with the action.
+        It's kept for compatibility if main.py still calls it, but log_state is preferred.
+        """
+        self.log_state(game_board_state, current_block, next_block, score, action_key)
 
     def update_game_state(self, game_board_state):
         """
         Called when a block lands or game state changes.
+        This method can be used to log states where no explicit player action occurred,
+        but the board state changed due to natural fall or line clear.
         """
-        pass # No specific action needed for data collection on state update
+        # In this context, we might want to log the state after a block lands
+        # or lines are cleared, but without a specific player action.
+        # main.py will now call log_state directly for these cases.
+        pass
 
     def save_data(self, filename="tetris_training_data.json"):
         """

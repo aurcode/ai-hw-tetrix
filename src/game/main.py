@@ -146,6 +146,12 @@ def main():
             continue # Skip game logic while menu is active
 
         # --- Main Game Loop (when menu_active is False) ---
+        if player_type == "data_collection" and ai_instance and not game_over and not paused:
+            game_board_state = blocks.get_board_state_array()
+            current_block_obj = blocks.current_block
+            next_block_obj = blocks.next_block
+            ai_instance.log_state(game_board_state, current_block_obj, next_block_obj, blocks.score, action_key=None)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -159,14 +165,7 @@ def main():
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
-                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
-                        elif event.key == pygame.K_UP:
-                            blocks.rotate_current_block()
-                            if player_type == "data_collection":
-                                game_board_state = blocks.get_board_state_array()
-                                current_block_obj = blocks.current_block
-                                next_block_obj = blocks.next_block
-                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
+                                ai_instance.log_state(game_board_state, current_block_obj, next_block_obj, blocks.score, event.key)
                 if event.key == pygame.K_p:
                     paused = not paused
                 if game_over and event.key == pygame.K_RETURN: # Restart game or go to menu
@@ -224,18 +223,13 @@ def main():
                 if event.type == pygame.KEYDOWN:
                     if event.key in MOVEMENT_KEYS:
                         blocks.start_moving_current_block(event.key)
-                        if player_type == "data_collection":
-                            # Log KEYDOWN for continuous movement start
-                            game_board_state = blocks.get_board_state_array()
-                            current_block_obj = blocks.current_block
-                            next_block_obj = blocks.next_block
-                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
                     elif event.key == pygame.K_UP: # Rotation is a KEYDOWN event
+                        blocks.rotate_current_block()
                         if player_type == "data_collection":
                             game_board_state = blocks.get_board_state_array()
                             current_block_obj = blocks.current_block
                             next_block_obj = blocks.next_block
-                            ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
+                            ai_instance.log_state(game_board_state, current_block_obj, next_block_obj, blocks.score, event.key)
                     elif event.key == HARD_DROP_KEY: # Hard drop
                         try:
                             blocks.hard_drop_current_block()
@@ -243,7 +237,7 @@ def main():
                                 game_board_state = blocks.get_board_state_array()
                                 current_block_obj = blocks.current_block
                                 next_block_obj = blocks.next_block
-                                ai_instance.log_action(game_board_state, current_block_obj, next_block_obj, event.key, blocks.score)
+                                ai_instance.log_state(game_board_state, current_block_obj, next_block_obj, blocks.score, event.key)
                         except TopReached:
                             game_over = True
                             if ai_instance and hasattr(ai_instance, 'update_game_state'):
@@ -251,6 +245,15 @@ def main():
                                 ai_instance.update_game_state(final_board_state)
                             if player_type == "data_collection" and ai_instance:
                                 ai_instance.save_data() # Save data if game over
+                elif event.type == pygame.KEYUP: # Log actions on KEYUP for better state capture
+                    if not paused and not game_over:
+                        if event.key in MOVEMENT_KEYS:
+                            blocks.stop_moving_current_block()
+                            if player_type == "data_collection":
+                                game_board_state = blocks.get_board_state_array()
+                                current_block_obj = blocks.current_block
+                                next_block_obj = blocks.next_block
+                                ai_instance.log_state(game_board_state, current_block_obj, next_block_obj, blocks.score, event.key)
             
             # --- Game Logic (Movement, Updates) ---
             try:
