@@ -196,7 +196,7 @@ def main():
                             "nn_ai_gameplay",
                             "q_learning_play",
                             "heuristic",
-                            "ai5",
+                            "deep_qn_ai",
                             "ai6",
                         ]:
                             pygame.time.set_timer(
@@ -308,7 +308,7 @@ def main():
                     "nn_ai_gameplay",
                     "q_learning_play",
                     "heuristic",
-                    "ai4",
+                    "deep_qn_ai",
                     "ai5",
                     "ai6",
                 ]
