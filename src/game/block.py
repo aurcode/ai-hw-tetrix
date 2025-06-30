@@ -15,6 +15,21 @@ class TopReached(Exception):
 
 class Block(pygame.sprite.Sprite):
 
+    @classmethod
+    def _get_shapes(cls):
+        if not hasattr(cls, "_shapes_cache"):
+            cls._shapes_cache = {}
+        if cls.__name__ not in cls._shapes_cache:
+            struct = np.array(cls.struct)
+            shapes = [struct]
+            current_struct = struct
+            for _ in range(3):
+                current_struct = np.rot90(current_struct)
+                if not any(np.array_equal(current_struct, s) for s in shapes):
+                    shapes.append(current_struct)
+            cls._shapes_cache[cls.__name__] = shapes
+        return cls._shapes_cache[cls.__name__]
+
     @staticmethod
     def collide(block, group, ignore_block=None):  # Added ignore_block parameter
         """
@@ -44,16 +59,11 @@ class Block(pygame.sprite.Sprite):
             )
         )
         self.current = True
-        self.struct = np.array(self.struct)
+        self.shapes = self._get_shapes()
+        self.shape_index = random.randint(0, len(self.shapes) - 1)
+        self.struct = self.shapes[self.shape_index]
         self.shape_name = self.__class__.__name__  # Add shape_name attribute
-        # Initial random rotation and flip.
         self.rotation = 0  # Initialize rotation
-        if random.randint(0, 1):
-            self.struct = np.rot90(self.struct)
-            self.rotation = (self.rotation + 90) % 360
-        if random.randint(0, 1):
-            # Flip in the X axis.
-            self.struct = np.flip(self.struct, 0)
         self._draw()
 
     def _draw(self, x=4, y=0):
@@ -188,9 +198,11 @@ class Block(pygame.sprite.Sprite):
         new_block.x = self.x
         new_block.y = self.y
         new_block.color = self.color
-        new_block.struct = np.copy(self.struct)  # Use np.copy for numpy arrays
         new_block.current = self.current
         new_block.rotation = self.rotation
+        new_block.shapes = self.shapes
+        new_block.shape_index = self.shape_index
+        new_block.struct = self.shapes[self.shape_index]
         new_block.redraw()  # Redraw to update image and mask
         return new_block
 
