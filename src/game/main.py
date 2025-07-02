@@ -10,6 +10,7 @@
 
 import sys  # Added for sys.exit
 import pygame
+import json
 from src.common.constants import (
     WINDOW_WIDTH,
     WINDOW_HEIGHT,
@@ -72,8 +73,7 @@ def main():
         "Data Collection Player",  # Renamed for clarity
         "NN AI Player (Gameplay)",  # New option for the actual NN AI
         "Play with Q-Learning AI",
-        "Heuristic AI Player (Gameplay)",  # Placeholder for heuristic AI
-        "AI Player 5 (Placeholder)",
+        "Heuristic AI Player (Gameplay)",
         "AI Player 6 (Placeholder)",
     ]
     selected_option_index = 0
@@ -154,25 +154,17 @@ def main():
                                 load_q_table=True,
                             )
                         elif selected_option_index == 5:
-                            player_type = "heuristic"  # Placeholder
-                            print(
-                                "AI Player 4 selected - using RandomAIPlayer as placeholder for now."
-                            )
-                            ai_instance = HeuristicAIPlayer(
-                                # grid_width=BOARD_WIDTH_TILES,
-                                # grid_height=BOARD_HEIGHT_TILES,
-                            )  # Placeholder
-                        elif selected_option_index == 6:
-                            player_type = "ai5"  # Placeholder
-                            print(
-                                "AI Player 5 selected - using RandomAIPlayer as placeholder for now."
-                            )
-                            ai_instance = RandomAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                            )  # Placeholder
+                            player_type = "heuristic"
+                            try:
+                                with open('best_heuristic_weights.json', 'r') as f:
+                                    weights = json.load(f)
+                                print("Loaded best heuristic weights from best_heuristic_weights.json")
+                                ai_instance = HeuristicAIPlayer(weights=weights)
+                            except FileNotFoundError:
+                                print("No saved weights found. Using default weights for Heuristic AI.")
+                                ai_instance = HeuristicAIPlayer()
                         elif (
-                            selected_option_index == 7
+                            selected_option_index == 6
                         ):  # New index for last placeholder
                             player_type = "ai6"  # Placeholder
                             print(
