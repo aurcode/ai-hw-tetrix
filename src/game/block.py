@@ -119,9 +119,6 @@ class Block(pygame.sprite.Sprite):
     def move_left(self, group, ignore_block=None):
         self.x -= 1
         # Check if we reached the left margin.
-        print(self.x, self.rect.left, GRID_WIDTH)
-        print(self.rotation, self.struct)
-        print(self.shape_name)
         if self.x < 0 or Block.collide(self, group, ignore_block):
             self.x += 1
 
