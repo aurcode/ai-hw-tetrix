@@ -1,14 +1,4 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#     "numpy",
-#     "pygame",
-#     "torch",
-#     "torchvision",
-# ]
-# ///
-
-import sys  # Added for sys.exit
+import sys
 import pygame
 from src.common.constants import (
     WINDOW_WIDTH,
@@ -16,24 +6,13 @@ from src.common.constants import (
     TILE_SIZE,
     GRID_WIDTH,
     GRID_HEIGHT,
-    BOARD_WIDTH_TILES,
-    BOARD_HEIGHT_TILES,
     NORMAL_FALL_SPEED_MS,
-    FAST_FALL_SPEED_MS,
     NORMAL_MOVE_SPEED_MS,
-    FAST_MOVE_SPEED_MS,
 )
 from src.common.utils import draw_grid, draw_centered_surface
 from src.game.block import TopReached
 from src.game.blocks_group import BlocksGroup
-from src.agent import (
-    RandomAIPlayer,
-    DataCollector,
-    NNAIPlayer,
-    QLearningAIPlayer,
-    HeuristicAIPlayer,
-    DeepQNAIPlayer,
-)
+from src.game.menu import Menu
 
 
 def main():
@@ -46,65 +25,38 @@ def main():
     menu_active = True
     paused = False
     game_over = False
-    player_type = None  # "human", "ai1", "ai2", etc.
-    ai_instance = None  # To hold the AI object
+    player_type = None
+    ai_instance = None
 
-    # Create background.
+    # Create background
     background = pygame.Surface(screen.get_size())
     bgcolor = (0, 0, 0)
     background.fill(bgcolor)
-    # Draw the grid on top of the background.
     draw_grid(background, TILE_SIZE, GRID_WIDTH, GRID_HEIGHT)
-    # This makes blitting faster.
     background = background.convert()
 
     try:
         font = pygame.font.Font("Roboto-Regular.ttf", 20)
-        menu_font = pygame.font.Font("Roboto-Regular.ttf", 30)  # Larger font for menu
+        menu_font = pygame.font.Font("Roboto-Regular.ttf", 30)
     except OSError:
-        # If the font file is not available, the default will be used.
         font = pygame.font.Font(pygame.font.get_default_font(), 20)
         menu_font = pygame.font.Font(pygame.font.get_default_font(), 30)
 
-    # --- Menu Setup ---
-    menu_options = [
-        "Human Player",
-        "Random AI Player",
-        "Data Collection Player",  # Renamed for clarity
-        "NN AI Player (Gameplay)",  # New option for the actual NN AI
-        "Play with Q-Learning AI",
-        "Heuristic AI Player (Gameplay)",  # Placeholder for heuristic AI
-        "DeepQN AI Player (Gameplay)",
-        "AI Player 6 (Placeholder)",
-    ]
-    selected_option_index = 0
-    menu_title_text = menu_font.render(
-        "Select Player Mode", True, (255, 255, 255), bgcolor
-    )
-    option_texts = [
-        menu_font.render(option, True, (255, 255, 255), bgcolor)
-        for option in menu_options
-    ]
-    selected_option_color = (255, 220, 0)  # Yellow for selected
+    menu = Menu(screen)
+    blocks = BlocksGroup()
+
+    # --- Event Constants ---
+    MOVEMENT_KEYS = (pygame.K_LEFT, pygame.K_RIGHT)
+    HARD_DROP_KEY = pygame.K_DOWN
+    EVENT_UPDATE_CURRENT_BLOCK = pygame.USEREVENT + 1
+    EVENT_MOVE_CURRENT_BLOCK = pygame.USEREVENT + 2
+    pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, NORMAL_FALL_SPEED_MS)
+    pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, NORMAL_MOVE_SPEED_MS)
 
     # --- In-Game Text ---
     next_block_text = font.render("Next figure:", True, (255, 255, 255), bgcolor)
     score_msg_text = font.render("Score:", True, (255, 255, 255), bgcolor)
     game_over_text = font.render("¡Game over!", True, (255, 220, 0), bgcolor)
-
-    # Event constants.
-    MOVEMENT_KEYS = (
-        pygame.K_LEFT,
-        pygame.K_RIGHT,
-    )  # Only left/right for continuous movement
-    HARD_DROP_KEY = pygame.K_DOWN  # Hard drop is now down arrow
-    EVENT_UPDATE_CURRENT_BLOCK = pygame.USEREVENT + 1
-    EVENT_MOVE_CURRENT_BLOCK = pygame.USEREVENT + 2
-    # Initial timer settings (will be adjusted based on player type)
-    pygame.time.set_timer(EVENT_UPDATE_CURRENT_BLOCK, NORMAL_FALL_SPEED_MS)
-    pygame.time.set_timer(EVENT_MOVE_CURRENT_BLOCK, NORMAL_MOVE_SPEED_MS)
-
-    blocks = BlocksGroup()  # Initialize blocks here, might be reset after menu
 
     while run:
         if menu_active:
@@ -113,133 +65,19 @@ def main():
                     run = False
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        selected_option_index = (selected_option_index - 1) % len(
-                            menu_options
-                        )
-                    elif event.key == pygame.K_DOWN:
-                        selected_option_index = (selected_option_index + 1) % len(
-                            menu_options
-                        )
-                    elif event.key == pygame.K_RETURN:
-                        if selected_option_index == 0:
-                            player_type = "human"
-                        elif selected_option_index == 1:
-                            player_type = "random_ai"  # Internal name for Random AI
-                            ai_instance = RandomAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                            )
-                        elif selected_option_index == 2:
-                            player_type = (
-                                "data_collection"  # Internal name for DataCollector
-                            )
-                            ai_instance = DataCollector(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                            )
-                        elif selected_option_index == 3:
-                            player_type = (
-                                "nn_ai_gameplay"  # Internal name for NN AI gameplay
-                            )
-                            ai_instance = NNAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                            )
-                        elif selected_option_index == 4:
-                            player_type = "q_learning_play"
-                            ai_instance = QLearningAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                                load_q_table=True,
-                            )
-                        elif selected_option_index == 5:
-                            player_type = "heuristic"  # Placeholder
-                            print(
-                                "AI Player 4 selected - using RandomAIPlayer as placeholder for now."
-                            )
-                            ai_instance = HeuristicAIPlayer(
-                                # grid_width=BOARD_WIDTH_TILES,
-                                # grid_height=BOARD_HEIGHT_TILES,
-                            )  # Placeholder
-                        elif selected_option_index == 6:
-                            player_type = "deep_qn_ai"
-                            ai_instance = DeepQNAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                                load_model=True,
-                            )
-                        elif (
-                            selected_option_index == 7
-                        ):  # New index for last placeholder
-                            player_type = "ai6"  # Placeholder
-                            print(
-                                "AI Player 6 selected - using RandomAIPlayer as placeholder for now."
-                            )
-                            ai_instance = RandomAIPlayer(
-                                grid_width=BOARD_WIDTH_TILES,
-                                grid_height=BOARD_HEIGHT_TILES,
-                            )  # Placeholder
 
-                        menu_active = False
-                        # Reset game state for a new game
-                        game_over = False
-                        paused = False
-                        blocks = (
-                            BlocksGroup()
-                        )  # Re-initialize blocks for the selected mode
+                player_type, ai_instance = menu.handle_input(event)
+                if player_type:
+                    menu_active = False
+                    game_over = False
+                    paused = False
+                    blocks = BlocksGroup()
 
-                        # Adjust game speed based on player type
-                        if player_type in [
-                            "random_ai",
-                            "nn_ai_gameplay",
-                            "q_learning_play",
-                            "heuristic",
-                            "deep_qn_ai",
-                            "ai6",
-                        ]:
-                            pygame.time.set_timer(
-                                EVENT_UPDATE_CURRENT_BLOCK, FAST_FALL_SPEED_MS
-                            )
-                            pygame.time.set_timer(
-                                EVENT_MOVE_CURRENT_BLOCK, FAST_MOVE_SPEED_MS
-                            )
-                        else:
-                            pygame.time.set_timer(
-                                EVENT_UPDATE_CURRENT_BLOCK, NORMAL_FALL_SPEED_MS
-                            )
-                            pygame.time.set_timer(
-                                EVENT_MOVE_CURRENT_BLOCK, NORMAL_MOVE_SPEED_MS
-                            )
-
-            # Draw Menu
-            screen.blit(
-                background, (0, 0)
-            )  # Clear screen with background (grid might be visible)
-
-            title_rect = menu_title_text.get_rect(
-                center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 4)
-            )
-            screen.blit(menu_title_text, title_rect)
-
-            for i, option_text_surface in enumerate(option_texts):
-                color = (
-                    selected_option_color
-                    if i == selected_option_index
-                    else (255, 255, 255)
-                )
-                # Re-render text with current color to show selection
-                rendered_text = menu_font.render(menu_options[i], True, color, bgcolor)
-                text_rect = rendered_text.get_rect(
-                    center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + i * 50)
-                )
-                screen.blit(rendered_text, text_rect)
-
+            menu.draw_menu()
             pygame.display.flip()
-            continue  # Skip game logic while menu is active
+            continue
 
-        # --- Main Game Loop (when menu_active is False) ---
+        # --- Main Game Loop ---
         if (
             player_type == "data_collection"
             and ai_instance
@@ -261,72 +99,61 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
                 break
-            elif event.type == pygame.KEYUP:
-                if not paused and not game_over:
-                    if (
-                        player_type == "human" or player_type == "data_collection"
-                    ):  # Process human input
-                        if event.key in MOVEMENT_KEYS:
-                            blocks.stop_moving_current_block()
-                            if player_type == "data_collection":
-                                game_board_state = blocks.get_board_state_array()
-                                current_block_obj = blocks.current_block
-                                next_block_obj = blocks.next_block
-                                ai_instance.log_state(
-                                    game_board_state,
-                                    current_block_obj,
-                                    next_block_obj,
-                                    blocks.score,
-                                    event.key,
-                                )
+
+            if event.type == pygame.KEYUP:
+                if (
+                    not paused
+                    and not game_over
+                    and (player_type == "human" or player_type == "data_collection")
+                ):
+                    if event.key in MOVEMENT_KEYS:
+                        blocks.stop_moving_current_block()
+                        if player_type == "data_collection":
+                            game_board_state = blocks.get_board_state_array()
+                            current_block_obj = blocks.current_block
+                            next_block_obj = blocks.next_block
+                            ai_instance.log_state(
+                                game_board_state,
+                                current_block_obj,
+                                next_block_obj,
+                                blocks.score,
+                                event.key,
+                            )
                 if event.key == pygame.K_p:
                     paused = not paused
-                if (
-                    game_over and event.key == pygame.K_RETURN
-                ):  # Restart game or go to menu
+                if game_over and event.key == pygame.K_RETURN:
                     if player_type == "data_collection" and ai_instance:
-                        ai_instance.save_data()  # Save data when game ends and returning to menu
-                    menu_active = True  # Go back to menu
-                    # Reset game state variables
+                        ai_instance.save_data()
+                    menu_active = True
                     game_over = False
                     paused = False
-                    # blocks will be re-initialized when menu selection is made
-                    # ai_instance will be (re-)initialized if an AI mode is selected
 
-            # Stop moving blocks if the game is over or paused.
             if game_over or paused:
-                # If AI is playing and game over, it might want to know
                 if game_over and ai_instance and hasattr(ai_instance, "game_ended"):
-                    ai_instance.game_ended()  # Optional: notify AI game ended
+                    ai_instance.game_ended()
                 continue
 
-            # --- AI Control Logic (for actual AI players) ---
+            # --- AI Control Logic ---
             if (
                 player_type
                 in [
                     "random_ai",
-                    "nn_ai_gameplay",
-                    "q_learning_play",
                     "heuristic",
+                    "evolutionary_ai",
+                    "nn_ai",
                     "deep_qn_ai",
-                    "ai5",
-                    "ai6",
+                    # "ai6",
                 ]
                 and ai_instance
                 and not paused
                 and not game_over
             ):
-                # 1. Get game state from blocks
                 game_board_state = blocks.get_board_state_array()
                 current_block_obj = blocks.current_block
                 next_block_obj = blocks.next_block
-
-                # 2. Get AI's next move
                 ai_actions = ai_instance.get_next_move(
                     game_board_state, current_block_obj, next_block_obj
                 )
-
-                # 3. Execute AI actions
                 for action in ai_actions:
                     if action == pygame.K_LEFT:
                         blocks.start_moving_current_block(pygame.K_LEFT)
@@ -336,9 +163,9 @@ def main():
                         blocks.start_moving_current_block(pygame.K_RIGHT)
                         blocks.move_current_block()
                         blocks.stop_moving_current_block()
-                    elif action == pygame.K_UP:  # Rotate
+                    elif action == pygame.K_UP:
                         blocks.rotate_current_block()
-                    elif action == HARD_DROP_KEY:  # Hard drop
+                    elif action == HARD_DROP_KEY:
                         try:
                             blocks.hard_drop_current_block()
                         except TopReached:
@@ -349,14 +176,14 @@ def main():
                                 final_board_state = blocks.get_board_state_array()
                                 ai_instance.update_game_state(final_board_state)
                             if player_type == "data_collection" and ai_instance:
-                                ai_instance.save_data()  # Save data if game over
+                                ai_instance.save_data()
 
-            # --- Human Input Processing (for human and Data Collection) ---
+            # --- Human Input Processing ---
             if player_type == "human" or player_type == "data_collection":
                 if event.type == pygame.KEYDOWN:
                     if event.key in MOVEMENT_KEYS:
                         blocks.start_moving_current_block(event.key)
-                    elif event.key == pygame.K_UP:  # Rotation is a KEYDOWN event
+                    elif event.key == pygame.K_UP:
                         blocks.rotate_current_block()
                         if player_type == "data_collection":
                             game_board_state = blocks.get_board_state_array()
@@ -369,7 +196,7 @@ def main():
                                 blocks.score,
                                 event.key,
                             )
-                    elif event.key == HARD_DROP_KEY:  # Hard drop
+                    elif event.key == HARD_DROP_KEY:
                         try:
                             blocks.hard_drop_current_block()
                             if player_type == "data_collection":
@@ -391,61 +218,54 @@ def main():
                                 final_board_state = blocks.get_board_state_array()
                                 ai_instance.update_game_state(final_board_state)
                             if player_type == "data_collection" and ai_instance:
-                                ai_instance.save_data()  # Save data if game over
-                elif (
-                    event.type == pygame.KEYUP
-                ):  # Log actions on KEYUP for better state capture
-                    if not paused and not game_over:
-                        if event.key in MOVEMENT_KEYS:
-                            blocks.stop_moving_current_block()
-                            if player_type == "data_collection":
-                                game_board_state = blocks.get_board_state_array()
-                                current_block_obj = blocks.current_block
-                                next_block_obj = blocks.next_block
-                                ai_instance.log_state(
-                                    game_board_state,
-                                    current_block_obj,
-                                    next_block_obj,
-                                    blocks.score,
-                                    event.key,
-                                )
+                                ai_instance.save_data()
+                elif event.type == pygame.KEYUP:
+                    if not paused and not game_over and event.key in MOVEMENT_KEYS:
+                        blocks.stop_moving_current_block()
+                        if player_type == "data_collection":
+                            game_board_state = blocks.get_board_state_array()
+                            current_block_obj = blocks.current_block
+                            next_block_obj = blocks.next_block
+                            ai_instance.log_state(
+                                game_board_state,
+                                current_block_obj,
+                                next_block_obj,
+                                blocks.score,
+                                event.key,
+                            )
 
-            # --- Game Logic (Movement, Updates) ---
+            # --- Game Logic ---
             try:
-                if event.type == EVENT_UPDATE_CURRENT_BLOCK:  # Natural fall
+                if event.type == EVENT_UPDATE_CURRENT_BLOCK:
                     blocks.update_current_block()
-                elif (
-                    event.type == EVENT_MOVE_CURRENT_BLOCK
-                ):  # Continuous movement for human
-                    if player_type == "human" or player_type == "data_collection":
-                        blocks.move_current_block()
-                    # AI movement is handled above based on ai_actions, not this timer directly.
-
+                elif event.type == EVENT_MOVE_CURRENT_BLOCK and (
+                    player_type == "human" or player_type == "data_collection"
+                ):
+                    blocks.move_current_block()
             except TopReached:
                 game_over = True
                 if ai_instance and hasattr(ai_instance, "update_game_state"):
                     final_board_state = blocks.get_board_state_array()
                     ai_instance.update_game_state(final_board_state)
                 if player_type == "data_collection" and ai_instance:
-                    ai_instance.save_data()  # Save data if game over
-        # Draw background and grid.
+                    ai_instance.save_data()
+
+        # --- Drawing ---
         screen.blit(background, (0, 0))
 
-        # Draw ghost piece
-        if blocks.current_block:  # Ensure there's a current block
+        if blocks.current_block:
             ghost_x, ghost_y = blocks.get_ghost_coords()
             ghost_image = blocks.current_block.image.copy()
-            ghost_image.set_alpha(90)  # Set transparency (0-255)
+            ghost_image.set_alpha(90)
             screen.blit(ghost_image, (ghost_x * TILE_SIZE, ghost_y * TILE_SIZE))
 
-        # Blocks.
         blocks.draw(screen)
-        # Sidebar with misc. information.
         draw_centered_surface(screen, next_block_text, 50)
         draw_centered_surface(screen, blocks.next_block.image, 100)
         draw_centered_surface(screen, score_msg_text, 240)
         score_text = font.render(str(blocks.score), True, (255, 255, 255), bgcolor)
         draw_centered_surface(screen, score_text, 270)
+
         if game_over:
             draw_centered_surface(screen, game_over_text, 360)
             restart_text = font.render(
@@ -456,7 +276,6 @@ def main():
             pause_text = menu_font.render("PAUSED", True, (255, 220, 0), bgcolor)
             draw_centered_surface(screen, pause_text, WINDOW_HEIGHT // 2)
 
-        # Update.
         pygame.display.flip()
 
     pygame.quit()
